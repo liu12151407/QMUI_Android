@@ -49,12 +49,25 @@ public class UpgradeTipTask implements UpgradeTask {
 
     public CharSequence getUpgradeWord(final Activity activity) {
         SpannableStringBuilder text = new SpannableStringBuilder();
-        if(mNewVersion == QDUpgradeManager.VERSION_1_1_7){
+        if (mNewVersion == QDUpgradeManager.VERSION_1_1_10) {
+            text.append("1. Simplified the use of QMUIWebContainer.\n");
+            text.append("2. Refactored QMUITabSegment to handle operations such as reducing item.\n");
+        } else if (mNewVersion == QDUpgradeManager.VERSION_1_1_9) {
+            text.append("1. Fixed an error that fitSystemWindows does not work in QMUIWebContainer.\n");
+            text.append("2. Fixed an error that swiping back would blink.\n");
+        } else if (mNewVersion == QDUpgradeManager.VERSION_1_1_8) {
+            text.append("1. Implemented QMUIWebView (beta), where supports for env(safe-area-inset-*) in css were added.\n");
+            text.append("2. Feature: QMUIQQFaceView supports gravity(left/right/center-horizontal) attribute.\n");
+            text.append("3. Feature: allows setting shadow color on Android ROM version 9 and higher.\n");
+            text.append("4. Feature: allows control of the size of left icon in QMUIGroupListView.Section by calling the method setLeftIconSize.\n");
+            text.append("5. Feature: supports custom web url matcher in QMUILinkify.\n");
+            text.append("6. Fixed some bugs and increased code robustness.");
+        } else if (mNewVersion == QDUpgradeManager.VERSION_1_1_7) {
             text.append("1. Improved QMUINotchHelper to support Xiaomi. \n");
             text.append("2. Improved drawing effect of QMUIQQFaceView. \n");
             text.append("3. Fixed a bug where UI would become unresponsive " +
                     "if popBackStack was invoked during fragment transitions.");
-        }else if(mNewVersion == QDUpgradeManager.VERSION_1_1_6){
+        } else if (mNewVersion == QDUpgradeManager.VERSION_1_1_6) {
             text.append("1. Feature: QMUINotchHelper, a new helper class for notch compatibility. \n");
             appendBlockSpace(activity, text);
             text.append("2. Added \"more\" click event to QMUIQQFaceView.\n");
@@ -68,7 +81,7 @@ public class UpgradeTipTask implements UpgradeTask {
                     "334", "352"
             };
             handleIssues(activity, text, issues);
-        }else if (mNewVersion == QDUpgradeManager.VERSION_1_1_5) {
+        } else if (mNewVersion == QDUpgradeManager.VERSION_1_1_5) {
             text.append("1. Code optimization for QMUIDialog.\n");
             appendBlockSpace(activity, text);
             text.append("2. Added a return value to KeyboardVisibilityEventListener, which " +

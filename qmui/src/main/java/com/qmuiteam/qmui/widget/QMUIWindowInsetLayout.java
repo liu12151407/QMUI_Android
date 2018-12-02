@@ -6,8 +6,8 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
-import android.widget.FrameLayout;
 
+import com.qmuiteam.qmui.layout.QMUIFrameLayout;
 import com.qmuiteam.qmui.util.QMUIWindowInsetHelper;
 
 /**
@@ -21,8 +21,8 @@ import com.qmuiteam.qmui.util.QMUIWindowInsetHelper;
  * @author cginechen
  * @date 2016-03-25
  */
-public class QMUIWindowInsetLayout extends FrameLayout implements IWindowInsetLayout {
-    private QMUIWindowInsetHelper mQMUIWindowInsetHelper;
+public class QMUIWindowInsetLayout extends QMUIFrameLayout implements IWindowInsetLayout {
+    protected QMUIWindowInsetHelper mQMUIWindowInsetHelper;
 
     public QMUIWindowInsetLayout(Context context) {
         this(context, null);

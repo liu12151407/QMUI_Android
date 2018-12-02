@@ -9,21 +9,21 @@ import android.os.Handler;
 import android.os.Message;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.ZoomButtonsController;
 
-import com.qmuiteam.qmui.arch.QMUIFragment;
 import com.qmuiteam.qmui.util.QMUILangHelper;
-import com.qmuiteam.qmui.util.QMUIViewHelper;
+import com.qmuiteam.qmui.util.QMUIResHelper;
 import com.qmuiteam.qmui.widget.QMUITopBarLayout;
 import com.qmuiteam.qmui.widget.dialog.QMUIDialog;
 import com.qmuiteam.qmui.widget.dialog.QMUIDialogAction;
+import com.qmuiteam.qmui.widget.webview.QMUIWebView;
+import com.qmuiteam.qmui.widget.webview.QMUIWebViewClient;
+import com.qmuiteam.qmui.widget.webview.QMUIWebViewContainer;
 import com.qmuiteam.qmuidemo.R;
 import com.qmuiteam.qmuidemo.base.BaseFragment;
 import com.qmuiteam.qmuidemo.view.QDWebView;
@@ -48,8 +48,8 @@ public class QDWebExplorerFragment extends BaseFragment {
     private final static int PROGRESS_GONE = 1;
 
 
-    @BindView(R.id.topbar) QMUITopBarLayout mTopBarLayout;
-    @BindView(R.id.webview_container) FrameLayout mWebViewContainer;
+    @BindView(R.id.topbar) protected QMUITopBarLayout mTopBarLayout;
+    @BindView(R.id.webview_container) QMUIWebViewContainer mWebViewContainer;
     @BindView(R.id.progress_bar) ProgressBar mProgressBar;
     private QDWebView mWebView;
 
@@ -98,14 +98,29 @@ public class QDWebExplorerFragment extends BaseFragment {
         }
     }
 
+    protected boolean needDispatchSafeAreaInset() {
+        return false;
+    }
+
     protected void initWebView() {
         mWebView = new QDWebView(getContext());
-        mWebViewContainer.addView(mWebView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        boolean needDispatchSafeAreaInset = needDispatchSafeAreaInset();
+        mWebViewContainer.addWebView(mWebView, needDispatchSafeAreaInset);
+        mWebViewContainer.setCustomOnScrollChangeListener(new QMUIWebView.OnScrollChangeListener() {
+            @Override
+            public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                onScrollWebContent(scrollX, scrollY, oldScrollX, oldScrollY);
+            }
+        });
+        FrameLayout.LayoutParams containerLp = (FrameLayout.LayoutParams) mWebViewContainer.getLayoutParams();
+        mWebViewContainer.setFitsSystemWindows(!needDispatchSafeAreaInset);
+        containerLp.topMargin = needDispatchSafeAreaInset ? 0 : QMUIResHelper.getAttrDimen(getContext(), R.attr.qmui_topbar_height);
+        mWebViewContainer.setLayoutParams(containerLp);
+
         mWebView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-                boolean needConfirm = !url.startsWith("http://cgsdream.org") && !url.startsWith("https://cgsdream.org");
+                boolean needConfirm = !url.startsWith("http://qmuiteam.com") && !url.startsWith("https://qmuiteam.com");
                 if (needConfirm) {
                     final String finalURL = url;
                     new QMUIDialog.MessageDialogBuilder(getContext())
@@ -140,7 +155,16 @@ public class QDWebExplorerFragment extends BaseFragment {
         mWebView.setWebViewClient(getWebViewClient());
         mWebView.requestFocus(View.FOCUS_DOWN);
         setZoomControlGone(mWebView);
+        configWebView(mWebViewContainer, mWebView);
         mWebView.loadUrl(mUrl);
+    }
+
+    protected void configWebView(QMUIWebViewContainer webViewContainer, QMUIWebView webView) {
+
+    }
+
+    protected void onScrollWebContent(int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+
     }
 
     private void handleUrl(String url) {
@@ -158,11 +182,11 @@ public class QDWebExplorerFragment extends BaseFragment {
     }
 
     protected WebChromeClient getWebViewChromeClient() {
-        return new ExplorerWebViewChromeClient();
+        return new ExplorerWebViewChromeClient(this);
     }
 
-    protected WebViewClient getWebViewClient() {
-        return new ExplorerWebViewClient();
+    protected QMUIWebViewClient getWebViewClient() {
+        return new ExplorerWebViewClient(needDispatchSafeAreaInset());
     }
 
     private void sendProgressMessage(int progressType, int newProgress, int duration) {
@@ -176,12 +200,8 @@ public class QDWebExplorerFragment extends BaseFragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mWebView != null) {
-            mWebViewContainer.removeView(mWebView);
-            mWebViewContainer.removeAllViews();
-            mWebView.destroy();
-            mWebView = null;
-        }
+        mWebViewContainer.destroy();
+        mWebView = null;
     }
 
     public static void setZoomControlGone(WebView webView) {
@@ -206,28 +226,43 @@ public class QDWebExplorerFragment extends BaseFragment {
         }
     }
 
-    protected class ExplorerWebViewChromeClient extends WebChromeClient {
+    public static class ExplorerWebViewChromeClient extends WebChromeClient {
+        private QDWebExplorerFragment mFragment;
+
+        public ExplorerWebViewChromeClient(QDWebExplorerFragment fragment) {
+            mFragment = fragment;
+        }
 
         @Override
         public void onProgressChanged(WebView view, int newProgress) {
             super.onProgressChanged(view, newProgress);
             // 修改进度条
-            if (newProgress > mProgressHandler.mDstProgressIndex) {
-                sendProgressMessage(PROGRESS_PROCESS, newProgress, 100);
+            if (newProgress > mFragment.mProgressHandler.mDstProgressIndex) {
+                mFragment.sendProgressMessage(PROGRESS_PROCESS, newProgress, 100);
             }
         }
 
         @Override
         public void onReceivedTitle(WebView view, String title) {
             super.onReceivedTitle(view, title);
-            updateTitle(view.getTitle());
+            mFragment.updateTitle(view.getTitle());
+        }
+
+        @Override
+        public void onShowCustomView(View view, CustomViewCallback callback) {
+            callback.onCustomViewHidden();
+        }
+
+        @Override
+        public void onHideCustomView() {
+
         }
     }
 
-    protected class ExplorerWebViewClient extends WebViewClient {
+    protected class ExplorerWebViewClient extends QMUIWebViewClient {
 
-        public ExplorerWebViewClient() {
-            super();
+        public ExplorerWebViewClient(boolean needDispatchSafeAreaInset) {
+            super(needDispatchSafeAreaInset, true);
         }
 
         @Override

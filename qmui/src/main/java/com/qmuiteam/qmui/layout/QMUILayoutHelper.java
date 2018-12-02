@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -79,7 +80,8 @@ public class QMUILayoutHelper implements IQMUILayout {
     // shadow
     private boolean mIsShowBorderOnlyBeforeL = true;
     private int mShadowElevation = 0;
-    private float mShadowAlpha = 0f;
+    private float mShadowAlpha;
+    private int mShadowColor = Color.BLACK;
 
     // outline inset
     private int mOutlineInsetLeft = 0;
@@ -232,6 +234,11 @@ public class QMUILayoutHelper implements IQMUILayout {
     }
 
     @Override
+    public int getShadowColor() {
+        return mShadowColor;
+    }
+
+    @Override
     public void setOutlineInset(int left, int top, int right, int bottom) {
         if (useFeature()) {
             View owner = mOwner.get();
@@ -269,6 +276,26 @@ public class QMUILayoutHelper implements IQMUILayout {
         }
         mShadowAlpha = shadowAlpha;
         invalidate();
+    }
+
+    @Override
+    public void setShadowColor(int shadowColor) {
+        if (mShadowColor == shadowColor) {
+            return;
+        }
+        mShadowColor = shadowColor;
+        setShadowColorInner(mShadowColor);
+    }
+
+    private void setShadowColorInner(int shadowColor) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            View owner = mOwner.get();
+            if (owner == null) {
+                return;
+            }
+            owner.setOutlineAmbientShadowColor(shadowColor);
+            owner.setOutlineSpotShadowColor(shadowColor);
+        }
     }
 
     private void invalidate() {
@@ -326,7 +353,12 @@ public class QMUILayoutHelper implements IQMUILayout {
 
     @Override
     public void setRadiusAndShadow(int radius, @IQMUILayout.HideRadiusSide int hideRadiusSide, int shadowElevation, float shadowAlpha) {
-        View owner = mOwner.get();
+        setRadiusAndShadow(radius, hideRadiusSide, shadowElevation, mShadowColor, shadowAlpha);
+    }
+
+    @Override
+    public void setRadiusAndShadow(int radius, int hideRadiusSide, int shadowElevation, int shadowColor, float shadowAlpha) {
+        final View owner = mOwner.get();
         if (owner == null) {
             return;
         }
@@ -350,12 +382,15 @@ public class QMUILayoutHelper implements IQMUILayout {
 
         mShadowElevation = shadowElevation;
         mShadowAlpha = shadowAlpha;
+        mShadowColor = shadowColor;
         if (useFeature()) {
             if (mShadowElevation == 0 || isRadiusWithSideHidden()) {
                 owner.setElevation(0);
             } else {
                 owner.setElevation(mShadowElevation);
             }
+
+            setShadowColorInner(mShadowColor);
 
             owner.setOutlineProvider(new ViewOutlineProvider() {
                 @Override
@@ -389,7 +424,15 @@ public class QMUILayoutHelper implements IQMUILayout {
                         right = Math.max(left + 1, right - view.getPaddingRight());
                         bottom = Math.max(top + 1, bottom - view.getPaddingBottom());
                     }
-                    outline.setAlpha(mShadowAlpha);
+
+                    float shadowAlpha = mShadowAlpha;
+                    if (mShadowElevation == 0) {
+                        // outline.setAlpha will work even if shadowElevation == 0
+                        shadowAlpha = 1f;
+                    }
+
+                    outline.setAlpha(shadowAlpha);
+
                     if (mRadius <= 0) {
                         outline.setRect(left, top,
                                 right, bottom);
@@ -399,7 +442,6 @@ public class QMUILayoutHelper implements IQMUILayout {
                     }
                 }
             });
-
             owner.setClipToOutline(mRadius > 0);
 
         }
@@ -559,6 +601,15 @@ public class QMUILayoutHelper implements IQMUILayout {
         mBorderWidth = borderWidth;
     }
 
+    @Override
+    public void setOuterNormalColor(int color) {
+        mOuterNormalColor = color;
+        View owner = mOwner.get();
+        if (owner != null) {
+            owner.invalidate();
+        }
+    }
+
     public void drawDividers(Canvas canvas, int w, int h) {
         if (mDividerPaint == null &&
                 (mTopDividerHeight > 0 || mBottomDividerHeight > 0 || mLeftDividerWidth > 0 || mRightDividerWidth > 0)) {
@@ -577,7 +628,7 @@ public class QMUILayoutHelper implements IQMUILayout {
         if (mBottomDividerHeight > 0) {
             mDividerPaint.setStrokeWidth(mBottomDividerHeight);
             mDividerPaint.setColor(mBottomDividerColor);
-            if (mTopDividerAlpha < 255) {
+            if (mBottomDividerAlpha < 255) {
                 mDividerPaint.setAlpha(mBottomDividerAlpha);
             }
             float y = (float) Math.floor(h - mBottomDividerHeight * 1f / 2);
@@ -664,14 +715,6 @@ public class QMUILayoutHelper implements IQMUILayout {
         mPath.addRoundRect(rect, radiusArray, Path.Direction.CW);
         canvas.drawPath(mPath, paint);
 
-    }
-
-    public void setOuterNormalColor(int color) {
-        mOuterNormalColor = color;
-        View owner = mOwner.get();
-        if (owner != null) {
-            owner.invalidate();
-        }
     }
 
     public static boolean useFeature() {
